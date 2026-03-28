@@ -1,13 +1,13 @@
 /**
  * Z.ai Desktop - Custom Styles
- * Amélioration de la barre de titre et intégration au système
+ * Amélioration de l'interface sans barre de titre custom
  */
 
 /* ============================================
    CACHER LA BARRE DE NAVIGATION DU SITE
    ============================================ */
 
-/* Sélecteurs communs pour la barre de navigation */
+/* Cacher la barre de navigation de z.ai si présente */
 header,
 .nav-header,
 .top-header,
@@ -18,58 +18,9 @@ header,
 .navbar,
 .top-nav,
 .app-nav,
-.main-header {
+.main-header,
+[role="banner"] {
   display: none !important;
-}
-
-/* ============================================
-   BARRE DE TITRE CUSTOM - STYLE MODERNE
-   ============================================ */
-
-/* Créer une barre de titre élégante en haut */
-body::before {
-  content: "Z.ai GLM Chat";
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 38px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(250,250,250,0.95) 100%);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(0,0,0,0.06);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  font-size: 14px;
-  font-weight: 500;
-  color: #1a1a1a;
-  letter-spacing: 0.3px;
-  z-index: 999999;
-  user-select: none;
-  -webkit-app-region: drag;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-}
-
-/* ============================================
-   AJUSTEMENTS DE LAYOUT
-   ============================================ */
-
-/* Compenser l'espace de la barre de titre */
-body {
-  padding-top: 38px !important;
-}
-
-/* Pour les conteneurs principaux */
-#main,
-.app-container,
-.chat-container,
-.main-container,
-.content-wrapper,
-[class*="container"]:not([class*="input"]):not([class*="button"]) {
-  padding-top: 0 !important;
-  margin-top: 0 !important;
 }
 
 /* ============================================
@@ -94,27 +45,11 @@ body {
   background: rgba(0,0,0,0.25);
 }
 
-/* ============================================
-   ANIMATIONS ET TRANSITIONS
-   ============================================ */
-
-/* Transition fluide pour les éléments */
-* {
-  transition: background-color 0.15s ease, border-color 0.15s ease;
-}
-
-/* ============================================
-   MODE SOMBRE (si détecté)
-   ============================================ */
+/* ==========================================
+   MODE SOMBRE
+   ========================================== */
 
 @media (prefers-color-scheme: dark) {
-  body::before {
-    background: linear-gradient(180deg, rgba(30,30,30,0.98) 0%, rgba(25,25,25,0.95) 100%);
-    border-bottom: 1px solid rgba(255,255,255,0.06);
-    color: #f0f0f0;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  }
-
   ::-webkit-scrollbar-thumb {
     background: rgba(255,255,255,0.15);
   }
@@ -122,17 +57,4 @@ body {
   ::-webkit-scrollbar-thumb:hover {
     background: rgba(255,255,255,0.25);
   }
-}
-
-/* ============================================
-   CORRECTIONS SPÉCIFIQUES Z.AI
-   ============================================ */
-
-/* Cacher tout header potentiel du site z.ai */
-[role="banner"],
-[data-testid*="header"],
-[data-testid*="nav"],
-[aria-label*="navigation"],
-[aria-label*="header"] {
-  display: none !important;
 }

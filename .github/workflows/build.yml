@@ -84,7 +84,7 @@ jobs:
       - name: Build Linux packages
         run: |
           pake https://chat.z.ai \
-            --name "Z.ai GLM Chat Desktop" \
+            --name "ZaiChat" \
             --hide-title-bar \
             --width 1400 \
             --height 900 \
@@ -140,7 +140,7 @@ jobs:
       - name: Build macOS package
         run: |
           pake https://chat.z.ai \
-            --name "Z.ai GLM Chat Desktop" \
+            --name "ZaiChat" \
             --hide-title-bar \
             --width 1400 \
             --height 900 \
