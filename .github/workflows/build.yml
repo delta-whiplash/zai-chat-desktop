@@ -64,14 +64,6 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 9
-
-      - name: Setup Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-
       - name: Install system dependencies
         run: |
           sudo apt-get update
@@ -82,8 +74,6 @@ jobs:
 
       - name: Build Linux packages
         run: |
-          mkdir -p build
-          cd build
           pake https://chat.z.ai \
             --name "ZaiChatDesktop" \
             --hide-title-bar \
@@ -99,12 +89,14 @@ jobs:
           PAKE_VER="${{ needs.check.outputs.pake_version }}"
           mkdir -p release
 
-          for file in build/src-tauri/target/release/bundle/deb/*.deb; do
-            [ -f "$file" ] && mv "$file" "release/zai-chat-desktop_${PAKE_VER}_amd64.deb"
+          # Find .deb files
+          find . -name "*.deb" -type f | while read file; do
+            mv "$file" "release/zai-chat-desktop_${PAKE_VER}_amd64.deb"
           done
 
-          for file in build/src-tauri/target/release/bundle/appimage/*.AppImage; do
-            [ -f "$file" ] && mv "$file" "release/ZaiChatDesktop_${PAKE_VER}_x86_64.AppImage"
+          # Find AppImage files
+          find . -name "*.AppImage" -type f | while read file; do
+            mv "$file" "release/ZaiChatDesktop_${PAKE_VER}_x86_64.AppImage"
           done
 
           ls -la release/
@@ -131,21 +123,11 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 9
-
-      - name: Setup Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-
       - name: Install Pake CLI
         run: npm install -g pake-cli
 
       - name: Build macOS package
         run: |
-          mkdir -p build
-          cd build
           pake https://chat.z.ai \
             --name "ZaiChatDesktop" \
             --hide-title-bar \
@@ -161,8 +143,9 @@ jobs:
           PAKE_VER="${{ needs.check.outputs.pake_version }}"
           mkdir -p release
 
-          for file in build/src-tauri/target/release/bundle/dmg/*.dmg; do
-            [ -f "$file" ] && mv "$file" "release/ZaiChatDesktop_${PAKE_VER}_x64.dmg"
+          # Find .dmg files
+          find . -name "*.dmg" -type f | while read file; do
+            mv "$file" "release/ZaiChatDesktop_${PAKE_VER}_x64.dmg"
           done
 
           ls -la release/
@@ -189,22 +172,12 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 9
-
-      - name: Setup Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-
       - name: Install Pake CLI
         run: npm install -g pake-cli
 
       - name: Build Windows package
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path build
-          cd build
           pake https://chat.z.ai `
             --name "ZaiChatDesktop" `
             --hide-title-bar `
@@ -221,9 +194,11 @@ jobs:
           $PAKE_VER = "${{ needs.check.outputs.pake_version }}"
           New-Item -ItemType Directory -Force -Path release
 
-          Get-ChildItem build/src-tauri/target/release/bundle/msi/*.msi | ForEach-Object {
-            $newName = "release/ZaiChatDesktop_$PAKE_VER_x64.msi"
-            Move-Item $_.FullName $newName
+          # Find .msi files
+          $msiFiles = Get-ChildItem -Path . -Filter "*.msi" -Recurse -ErrorAction SilentlyContinue
+          foreach ($file in $msiFiles) {
+            $newName = "release/ZaiChatDesktop_$PAKE_VER`_x64.msi"
+            Move-Item $file.FullName $newName
           }
 
           Get-ChildItem release/
