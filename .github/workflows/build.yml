@@ -1,0 +1,280 @@
+name: Check Pake Updates & Build
+
+on:
+  schedule:
+    - cron: '0 6 * * *'  # Daily at 6am UTC
+  workflow_dispatch:
+
+concurrency:
+  group: pake-sync
+  cancel-in-progress: false
+
+jobs:
+  # -----------------------------------------------------------------
+  # Check if new Pake version exists
+  # -----------------------------------------------------------------
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      needs_build: ${{ steps.check.outputs.needs_build }}
+      pake_version: ${{ steps.check.outputs.pake_version }}
+      current_version: ${{ steps.check.outputs.current_version }}
+
+    steps:
+      - name: Check Pake releases
+        id: check
+        run: |
+          # Get latest Pake release
+          PAKE_VER=$(curl -fsSL "https://api.github.com/repos/tw93/Pake/releases/latest" | jq -r '.tag_name')
+          PAKE_VER_CLEAN=${PAKE_VER#V}
+
+          echo "pake_version=${PAKE_VER}" >> "$GITHUB_OUTPUT"
+          echo "pake_version_clean=${PAKE_VER_CLEAN}" >> "$GITHUB_ENV"
+
+          # Check if we already have a release for this Pake version
+          EXISTING=$(curl -fsSL "https://api.github.com/repos/${{ github.repository }}/releases/tags/${PAKE_VER}" 2>/dev/null | jq -r '.tag_name // empty')
+
+          if [[ -n "$EXISTING" ]]; then
+            echo "needs_build=false" >> "$GITHUB_OUTPUT"
+            echo "current_version=${PAKE_VER}" >> "$GITHUB_OUTPUT"
+            echo "Already built for Pake ${PAKE_VER}"
+          else
+            echo "needs_build=true" >> "$GITHUB_OUTPUT"
+            echo "New Pake version: ${PAKE_VER} - need to build"
+          fi
+
+      - name: Summary
+        run: |
+          echo "Pake version: ${{ steps.check.outputs.pake_version }}"
+          echo "Needs build: ${{ steps.check.outputs.needs_build }}"
+
+  # -----------------------------------------------------------------
+  # Linux Build
+  # -----------------------------------------------------------------
+  build-linux:
+    needs: check
+    if: needs.check.outputs.needs_build == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - name: Setup Rust
+        uses: dtolnay/rust-action@stable
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - name: Install Pake CLI
+        run: npm install -g pake-cli
+
+      - name: Build Linux packages
+        run: |
+          mkdir -p build
+          cd build
+          pake https://chat.z.ai \
+            --name "ZaiChatDesktop" \
+            --hide-title-bar \
+            --width 1400 \
+            --height 900 \
+            --show-system-tray \
+            --targets deb,appimage
+        env:
+          CI: true
+
+      - name: Rename artifacts with version
+        run: |
+          PAKE_VER="${{ needs.check.outputs.pake_version }}"
+          mkdir -p release
+
+          for file in build/src-tauri/target/release/bundle/deb/*.deb; do
+            [ -f "$file" ] && mv "$file" "release/zai-chat-desktop_${PAKE_VER}_amd64.deb"
+          done
+
+          for file in build/src-tauri/target/release/bundle/appimage/*.AppImage; do
+            [ -f "$file" ] && mv "$file" "release/ZaiChatDesktop_${PAKE_VER}_x86_64.AppImage"
+          done
+
+          ls -la release/
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-artifacts
+          path: release/*
+
+  # -----------------------------------------------------------------
+  # macOS Build
+  # -----------------------------------------------------------------
+  build-macos:
+    needs: check
+    if: needs.check.outputs.needs_build == 'true'
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - name: Setup Rust
+        uses: dtolnay/rust-action@stable
+
+      - name: Install Pake CLI
+        run: npm install -g pake-cli
+
+      - name: Build macOS package
+        run: |
+          mkdir -p build
+          cd build
+          pake https://chat.z.ai \
+            --name "ZaiChatDesktop" \
+            --hide-title-bar \
+            --width 1400 \
+            --height 900 \
+            --show-system-tray \
+            --targets dmg
+        env:
+          CI: true
+
+      - name: Rename artifacts with version
+        run: |
+          PAKE_VER="${{ needs.check.outputs.pake_version }}"
+          mkdir -p release
+
+          for file in build/src-tauri/target/release/bundle/dmg/*.dmg; do
+            [ -f "$file" ] && mv "$file" "release/ZaiChatDesktop_${PAKE_VER}_x64.dmg"
+          done
+
+          ls -la release/
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-artifacts
+          path: release/*
+
+  # -----------------------------------------------------------------
+  # Windows Build
+  # -----------------------------------------------------------------
+  build-windows:
+    needs: check
+    if: needs.check.outputs.needs_build == 'true'
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - name: Setup Rust
+        uses: dtolnay/rust-action@stable
+
+      - name: Install Pake CLI
+        run: npm install -g pake-cli
+
+      - name: Build Windows package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path build
+          cd build
+          pake https://chat.z.ai `
+            --name "ZaiChatDesktop" `
+            --hide-title-bar `
+            --width 1400 `
+            --height 900 `
+            --show-system-tray `
+            --targets msi
+        env:
+          CI: true
+
+      - name: Rename artifacts with version
+        shell: pwsh
+        run: |
+          $PAKE_VER = "${{ needs.check.outputs.pake_version }}"
+          New-Item -ItemType Directory -Force -Path release
+
+          Get-ChildItem build/src-tauri/target/release/bundle/msi/*.msi | ForEach-Object {
+            $newName = "release/ZaiChatDesktop_$PAKE_VER_x64.msi"
+            Move-Item $_.FullName $newName
+          }
+
+          Get-ChildItem release/
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-artifacts
+          path: release/*
+
+  # -----------------------------------------------------------------
+  # Create Release
+  # -----------------------------------------------------------------
+  release:
+    needs: [check, build-linux, build-macos, build-windows]
+    if: needs.check.outputs.needs_build == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: '*-artifacts'
+
+      - name: Organize artifacts
+        run: |
+          mkdir -p release
+          find artifacts -type f -exec cp {} release/ \;
+          ls -la release/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.check.outputs.pake_version }}
+          name: "Z.ai Desktop ${{ needs.check.outputs.pake_version }}"
+          body: |
+            Z.ai Desktop built with Pake ${{ needs.check.outputs.pake_version }}
+
+            ## Downloads
+
+            | Platform | Package |
+            |----------|---------|
+            | Linux | `.deb` (Debian/Ubuntu), `.AppImage` (Universal) |
+            | macOS | `.dmg` (x64) |
+            | Windows | `.msi` (x64) |
+
+            ## Notes
+            - Built using [Pake](https://github.com/tw93/Pake) ${{ needs.check.outputs.pake_version }}
+            - Pake changelog: https://github.com/tw93/Pake/releases/${{ needs.check.outputs.pake_version }}
+          files: release/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
