@@ -4,6 +4,12 @@ on:
   schedule:
     - cron: '0 6 * * *'  # Daily at 6am UTC
   workflow_dispatch:
+    inputs:
+      force_build:
+        description: 'Force rebuild even if release exists'
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: pake-sync
@@ -34,7 +40,10 @@ jobs:
           # Check if we already have a release for this Pake version
           EXISTING=$(curl -fsSL "https://api.github.com/repos/${{ github.repository }}/releases/tags/${PAKE_VER}" 2>/dev/null | jq -r '.tag_name // empty')
 
-          if [[ -n "$EXISTING" ]]; then
+          if [[ "${{ inputs.force_build }}" == "true" ]]; then
+            echo "needs_build=true" >> "$GITHUB_OUTPUT"
+            echo "Force build requested"
+          elif [[ -n "$EXISTING" ]]; then
             echo "needs_build=false" >> "$GITHUB_OUTPUT"
             echo "current_version=${PAKE_VER}" >> "$GITHUB_OUTPUT"
             echo "Already built for Pake ${PAKE_VER}"
