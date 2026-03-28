@@ -75,12 +75,14 @@ jobs:
       - name: Build Linux packages
         run: |
           pake https://chat.z.ai \
-            --name "ZaiChatDesktop" \
+            --name "Z.ai GLM Chat Desktop" \
             --hide-title-bar \
             --width 1400 \
             --height 900 \
             --show-system-tray \
-            --targets deb,appimage
+            --targets deb,appimage \
+            --inject ./inject/style.css \
+            --inject ./inject/app.js
         env:
           CI: true
 
@@ -129,12 +131,14 @@ jobs:
       - name: Build macOS package
         run: |
           pake https://chat.z.ai \
-            --name "ZaiChatDesktop" \
+            --name "Z.ai GLM Chat Desktop" \
             --hide-title-bar \
             --width 1400 \
             --height 900 \
             --show-system-tray \
-            --targets dmg
+            --targets dmg \
+            --inject ./inject/style.css \
+            --inject ./inject/app.js
         env:
           CI: true
 
@@ -184,7 +188,9 @@ jobs:
             --width 1400 `
             --height 900 `
             --show-system-tray `
-            --targets msi
+            --targets msi `
+            --inject ./inject/style.css `
+            --inject ./inject/app.js
         env:
           CI: true
 
